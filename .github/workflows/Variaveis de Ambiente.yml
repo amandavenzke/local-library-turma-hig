@@ -1,26 +1,21 @@
 name: Variaveis de Ambiente
-
-on:
+'on':
   push:
     branches:
       - main
   pull_request:
     branches:
-      - main 
-
+      - main
 env:
-  ARTIFACT: "Meu Artefato"	  
-	
+  ARTIFACT: Meu Artefato
 jobs:
   build:
     runs-on: ubuntu-latest
-      
     steps:
-    - uses: actions/checkout@v2
-   
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2.2.2
-      with:
-        name: ${{ARTIFACT}}
-        path: .
-        if-no-files-found: error
+      - uses: actions/checkout@v2
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2.2.2
+        with:
+          name: '${{env.ARTIFACT}}'
+          path: .
+          if-no-files-found: error
