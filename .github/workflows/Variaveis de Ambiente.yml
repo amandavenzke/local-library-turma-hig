@@ -7,7 +7,7 @@ name: Variaveis de Ambiente
     branches:
       - main
 env:
-  ARTIFACT: Meu Artefato
+  ARTIFACT: "Meu Artefato"
 jobs:
   build:
     runs-on: ubuntu-latest
