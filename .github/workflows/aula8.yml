@@ -1,0 +1,110 @@
+name: Node.js Pipeline - Aula 8
+
+on:
+  push:
+    branches:
+      - main
+  
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [10.x, 12.x, 14.x]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - run: npm ci
+    - run: npm run build --if-present
+    - run: npm test --if-present
+
+  linter:
+    name: Lint code base
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+        with:
+          # Full git history is needed to get a proper list of changed files within `super-linter`
+          fetch-depth: 0
+      # Run Linter against code base #
+      - name: Lint Code Base
+        uses: github/super-linter@v3
+        env:
+          VALIDATE_ALL_CODEBASE: false
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_CSS: true
+          VALIDATE_MARKDOWN: true
+          JAVASCRIPT_DEFAULT_STYLE: prettier      
+
+  deploy-hml:
+    name: Deploy HML
+    runs-on: ubuntu-latest
+    needs: [build, linter]
+    environment:
+      name: 'UAT'
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+        with:
+          # Full git history is needed to build on Heroku
+          fetch-depth: 0
+      
+      - name: Login
+        uses: akhileshns/heroku-deploy@v3.10.9 # This is the action
+        with:
+          heroku_api_key: ${{secrets.HEROKU_API_KEY}}
+          heroku_app_name: devopslab-amanda-stg
+          heroku_email: patriciavenzke@gmail.com
+          justlogin: true
+      
+      - name: Set Heroku remote
+        run: heroku git:remote -a devopslab-amanda-stg
+      
+      - name: Set env variables
+        run: |
+          heroku config:set MONGODB_URI=${{secrets.BD_HML_KEY}}
+      
+      - name: Push
+        run: git push heroku main
+
+  deploy-prd:
+    runs-on: ubuntu-latest
+    needs: deploy-hml
+    environment:
+      name: 'production'
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+        with:
+          # Full git history is needed to build on Heroku
+          fetch-depth: 0
+      
+      - name: Login Heroku
+        uses: akhileshns/heroku-deploy@v3.10.9 # This is the action
+        with:
+          heroku_api_key: ${{secrets.HEROKU_API_KEY}}
+          heroku_app_name: devopslab-amanda
+          heroku_email: patriciavenzke@gmail.com
+          justlogin: true
+      
+      - name: Set Heroku remote
+        run: heroku git:remote -a devopslab-amanda
+      
+      - name: Set env variables
+        run: |
+          heroku config:set NODE_ENV=production
+          heroku config:set MONGODB_URI=${{secrets.BD_PRD_KEY}}
+      
+      - name: Push
+        run: git push heroku main
